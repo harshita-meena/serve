@@ -20,7 +20,9 @@ import org.pytorch.serve.archive.model.ModelNotFoundException;
 import org.pytorch.serve.archive.model.ModelVersionNotFoundException;
 import org.pytorch.serve.grpc.inference.PredictionResponse;
 import org.pytorch.serve.grpc.management.ManagementResponse;
+import org.pytorch.serve.grpc.openinference.OpenInferenceGrpc;
 import org.pytorch.serve.grpc.openinference.OpenInferenceGrpc.InferTensorContents;
+import org.pytorch.serve.grpc.openinference.OpenInferenceGrpc.InferParameter;
 import org.pytorch.serve.grpc.openinference.OpenInferenceGrpc.ModelInferResponse;
 import org.pytorch.serve.grpc.openinference.OpenInferenceGrpc.ModelInferResponse.InferOutputTensor;
 import org.pytorch.serve.grpc.openinference.OpenInferenceGrpc.ModelMetadataResponse;
@@ -194,7 +196,7 @@ public class GRPCJob extends Job {
                         respList.get(0).setCustomizedMetadata(body);
                     }
                     logger.info("HMEENA");
-                    logger.info(respList.get(0).getCustomizedMetadata().toString());
+                    //logger.info(respList.get(0).getCustomizedMetadata().toString());
                     JsonObject metadata = respList.get(0).getCustomizedMetadata();
                     ModelMetadataResponse.Builder responseBuilder = ModelMetadataResponse.newBuilder();
                     responseBuilder.setName(metadata.get("name").getAsString());
@@ -215,10 +217,19 @@ public class GRPCJob extends Job {
 
                     for (JsonElement element : jsonInputs) {
                         TensorMetadata.Builder inputBuilder = TensorMetadata.newBuilder();
+                        logger.info(element.toString());
                         inputBuilder.setName(element.getAsJsonObject().get("name").getAsString());
                         inputBuilder.setDatatype(
                                 element.getAsJsonObject().get("datatype").getAsString());
                         JsonArray shapeArray = element.getAsJsonObject().get("shape").getAsJsonArray();
+                        JsonObject parameters = ((element.getAsJsonObject().get("parameters") == null) ? null : element.getAsJsonObject().get("parameters").getAsJsonObject());
+                        if (parameters != null) {
+                            for (String keyparam : parameters.keySet()) {
+                                InferParameter.Builder paramBuilder = InferParameter.newBuilder();
+                                paramBuilder.setStringParam(parameters.get(keyparam).getAsString());
+                                inputBuilder.putParameters(keyparam, paramBuilder.build());
+                            }
+                        }
                         shapeArray.forEach(
                                 shapeElement -> inputBuilder.addShape(shapeElement.getAsLong()));
                         responseBuilder.addInputs(inputBuilder);
